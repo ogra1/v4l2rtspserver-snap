@@ -1,0 +1,71 @@
+name: v4l2rtspserver
+version: '0.0.8'
+summary: RTSP and HTTP camera stream server
+description: |
+  This is an streamer feed from
+    - an Video4Linux device that support H264, HEVC, JPEG, VP8 or VP9 capture.
+    - an ALSA device that support PCM S16_BE, S16_LE, S32_BE or S32_LE
+
+  The RTSP server supports
+    - RTP/UDP unicast
+    - RTP/UDP multicast
+    - RTP/TCP
+    - RTP/RTSP/HTTP
+
+  The HTTP server supports (available using -S option for capture format that
+  could be muxed in Transport Stream)
+    - HLS
+    - MPEG-DASH
+
+  For more information see the upstream README at
+  https://github.com/mpromonet/v4l2rtspserver
+
+grade: stable
+confinement: strict
+
+apps:
+  v4l2rtspserver:
+    command: bin/v4l2rtspserver
+    daemon: simple
+    plugs:
+      - camera
+      - home
+      - alsa
+      - network
+      - network-bind
+
+parts:
+  v4lwrapper:
+    source: https://github.com/mpromonet/libv4l2cpp.git
+    source-depth: 1
+    plugin: make
+    override-build: |
+      make all
+      mkdir -p $SNAPCRAFT_PART_INSTALL/include/libv4l2cpp/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/lib/
+      make PREFIX=$SNAPCRAFT_PART_INSTALL install
+    build-packages:
+      - liblog4cpp5-dev
+  v4lserver:
+    after: [ v4lwrapper ]
+    source: https://github.com/mpromonet/v4l2rtspserver.git
+    source-tag: v0.0.8
+    plugin: cmake
+    override-build: |
+      snapcraftctl build
+      mkdir -p $SNAPCRAFT_PART_INSTALL/bin
+      cp -av $(pwd)/src $SNAPCRAFT_PART_INSTALL/bin/v4l2rtspserver
+      REMOVE="$(find $SNAPCRAFT_PART_INSTALL -name 'src' | \
+        sed "s;$SNAPCRAFT_PART_INSTALL/;;" | \
+        sed 's/\/.*$//')"
+      rm -rf $SNAPCRAFT_PART_INSTALL/$REMOVE
+    build-packages:
+      - liblivemedia-dev
+      - liblog4cpp5-dev
+    stage-packages:
+      - libasound2
+      - libbasicusageenvironment1
+      - libgroupsock8
+      - liblivemedia50
+      - liblog4cpp5v5
+      - libusageenvironment3
