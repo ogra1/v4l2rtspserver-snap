@@ -33,6 +33,14 @@ apps:
       - alsa
       - network
       - network-bind
+  manual:
+    command: bin/v4l2rtspserver
+    plugs:
+      - camera
+      - home
+      - alsa
+      - network
+      - network-bind
 
 parts:
   v4lwrapper:
