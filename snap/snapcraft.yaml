@@ -1,6 +1,7 @@
 name: v4l2rtspserver
-version: '0.0.8'
+adopt-info: v4lserver
 summary: RTSP and HTTP camera stream server
+base: core20
 description: |
   This is an streamer feed from
     - an Video4Linux device that support H264, HEVC, JPEG, VP8 or VP9 capture.
@@ -17,6 +18,18 @@ description: |
     - HLS
     - MPEG-DASH
 
+  To give the ssnap access to camera and audio capturing, use the following commands
+
+    sudo snap connect v4l2rtspserver:camera
+    sudo snap connect v4l2rtspserver:alsa
+
+  Now you can start the daemon with
+
+    sudo snap start --enable v4l2rtspserver
+
+  Thre snap also ships a command to be used from CLI in case you do not want to
+  use the server, this command is called v4l2rtspserver.manual
+
   For more information see the upstream README at
   https://github.com/mpromonet/v4l2rtspserver
 
@@ -25,8 +38,9 @@ confinement: strict
 
 apps:
   v4l2rtspserver:
-    command: bin/v4l2rtspserver
+    command: usr/bin/v4l2rtspserver -S1
     daemon: simple
+    install-mode: disable
     plugs:
       - camera
       - home
@@ -34,7 +48,7 @@ apps:
       - network
       - network-bind
   manual:
-    command: bin/v4l2rtspserver
+    command: usr/bin/v4l2rtspserver
     plugs:
       - camera
       - home
@@ -42,38 +56,44 @@ apps:
       - network
       - network-bind
 
+layout:
+  /usr/share/v4l2rtspserver:
+    bind: $SNAP/usr/share/v4l2rtspserver
+  /usr/share/alsa:
+    bind: $SNAP/usr/share/alsa
+  /etc/alsa:
+    bind: $SNAP/etc/alsa
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/alsa-lib:
+    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/alsa-lib
+
 parts:
-  v4lwrapper:
-    source: https://github.com/mpromonet/libv4l2cpp.git
-    source-depth: 1
-    plugin: make
-    override-build: |
-      make all
-      mkdir -p $SNAPCRAFT_PART_INSTALL/include/libv4l2cpp/
-      mkdir -p $SNAPCRAFT_PART_INSTALL/lib/
-      make PREFIX=$SNAPCRAFT_PART_INSTALL install
-    build-packages:
-      - liblog4cpp5-dev
   v4lserver:
-    after: [ v4lwrapper ]
     source: https://github.com/mpromonet/v4l2rtspserver.git
-    source-tag: v0.0.8
     plugin: cmake
-    override-build: |
-      snapcraftctl build
-      mkdir -p $SNAPCRAFT_PART_INSTALL/bin
-      cp -av $(pwd)/src $SNAPCRAFT_PART_INSTALL/bin/v4l2rtspserver
-      REMOVE="$(find $SNAPCRAFT_PART_INSTALL -name 'src' | \
-        sed "s;$SNAPCRAFT_PART_INSTALL/;;" | \
-        sed 's/\/.*$//')"
-      rm -rf $SNAPCRAFT_PART_INSTALL/$REMOVE
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
     build-packages:
       - liblivemedia-dev
       - liblog4cpp5-dev
+      - libasound2-dev
     stage-packages:
       - libasound2
+      - libasound2-plugins
       - libbasicusageenvironment1
       - libgroupsock8
-      - liblivemedia50
+      - liblivemedia77
       - liblog4cpp5v5
       - libusageenvironment3
+    override-pull: |
+      snapcraftctl pull
+      VER="$(git describe --tags)"
+      snapcraftctl set-version $VER
+    prime:
+      - -lib/systemd
+    override-prime: |
+      snapcraftctl prime
+      find $SNAPCRAFT_PRIME/usr/share/doc/ ! -type d ! -name '*copyright*' | xargs rm
+      mkdir -p $SNAPCRAFT_PRIME/usr/share/doc/v4l2wrapper
+      cp $SNAPCRAFT_PART_SRC/v4l2wrapper/LICENSE $SNAPCRAFT_PRIME/usr/share/doc/v4l2wrapper/copyright
+      mkdir -p $SNAPCRAFT_PRIME/usr/share/doc/v4l2rtspserver
+      cp $SNAPCRAFT_PART_SRC/LICENSE $SNAPCRAFT_PRIME/usr/share/doc/v4l2rtspserver/copyright
