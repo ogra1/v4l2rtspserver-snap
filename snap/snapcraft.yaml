@@ -76,6 +76,7 @@ parts:
       - liblivemedia-dev
       - liblog4cpp5-dev
       - libasound2-dev
+      - libssl-dev
     stage-packages:
       - libasound2
       - libasound2-plugins
@@ -84,6 +85,7 @@ parts:
       - liblivemedia77
       - liblog4cpp5v5
       - libusageenvironment3
+      - libssl1.1
     override-pull: |
       snapcraftctl pull
       VER="$(git describe --tags)"
